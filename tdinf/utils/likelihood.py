@@ -653,7 +653,7 @@ class LnLikelihoodManager(LogisticParameterManager):
         # Precompute the necessary quantities here for efficiency
         self.Tinv_first_col_dict = {}
         for ifo in self.ifos:
-            self.Tinv_first_col_dict[ifo] = self.gohberg_semencul_prep(self.rho_dict[ifo])
+            self.Tinv_first_col_dict[ifo] = gohberg_semencul_prep(self.rho_dict[ifo])
         super().__init__(*args, **kwargs)
 
     def _make_autocorrolation_dict(self):
@@ -757,7 +757,7 @@ class LnLikelihoodManager(LogisticParameterManager):
 
             # "Over whiten" residuals
             # rwt = solve_toeplitz(self.rho_dict[ifo], r)
-            rwt = self.gohberg_semencul_multiply(self.Tinv_first_col_dict[ifo], r)
+            rwt = gohberg_semencul_multiply(self.Tinv_first_col_dict[ifo], r)
 
             # Compute log likelihood for ifo
             ln_posterior -= 0.5 * np.dot(r, rwt)

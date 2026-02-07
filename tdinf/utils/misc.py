@@ -171,7 +171,7 @@ def gohberg_semencul_prep(t_col):
     """
     e0 = np.zeros(len(t_col))
     e0[0] = 1.0
-    x = solve_toeplitz((t_col, t_col), e0)
+    x = sl.solve_toeplitz((t_col, t_col), e0)
     return x
 
 def gohberg_semencul_multiply(Tinv_first_col, b):
@@ -205,15 +205,15 @@ def gohberg_semencul_multiply(Tinv_first_col, b):
 
     # Term 1: L1 @ (L1.T @ b)
     # Inner: L1.T @ b -> use (r_L1, c_L1)
-    inner_1 = matmul_toeplitz((r_L1, c_L1), b)
+    inner_1 = sl.matmul_toeplitz((r_L1, c_L1), b)
     # Outer: L1 @ inner -> use (c_L1, r_L1)
-    term_1 = matmul_toeplitz((c_L1, r_L1), inner_1)
+    term_1 = sl.matmul_toeplitz((c_L1, r_L1), inner_1)
 
     # Term 2: L2 @ (L2.T @ b)
     # Inner: L2.T @ b -> use (r_L2, c_L2)
-    inner_2 = matmul_toeplitz((r_L2, c_L2), b)
+    inner_2 = sl.matmul_toeplitz((r_L2, c_L2), b)
     # Outer: L2 @ inner -> use (c_L2, r_L2)
-    term_2 = matmul_toeplitz((c_L2, r_L2), inner_2)
+    term_2 = sl.matmul_toeplitz((c_L2, r_L2), inner_2)
 
     # 4. Combine
     return (1.0 / x0) * (term_1 - term_2)
