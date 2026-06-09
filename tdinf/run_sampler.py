@@ -109,6 +109,16 @@ def create_run_sampler_arg_parser():
                    help = 'Include flag if you want to sample over sky position parameters '
                            '(right ascension, declination, and polarization).')
 
+    # Do we want to sample in eccentricity?
+    p.add_argument('--vary-eccentricity', action='store_true',
+                   help = 'Include flag if you want to sample over eccentricity and '
+                          'the radial anomaly (passed to gwsignal as meanPerAno). '
+                          'This is interpreted by default as the relativistic anomaly, '
+                          'but can also be interpreted as the mean anomaly by passing '
+                          'in --waveform-kwargs `radial_anomaly_type = mean_anomaly`. '
+                          'Requires a gwsignal approximant, e.g. SEOBNRv5EHM. '
+                          'If not given, eccentricity is fixed to zero.')
+
     # Set up prior bounds
     p.add_argument('--total-mass-prior-bounds', type=float, nargs=2, default=[200, 350],
                    help="detector frame total mass bounds (in solar masses) for total_mass prior."
@@ -125,6 +135,17 @@ def create_run_sampler_arg_parser():
     p.add_argument('--time-prior-sigma', type=float, default=0.01, 
                    help="Standard deviation of time prior [s.]"
                         "Default: 0.01 s")
+    p.add_argument('--eccentricity-prior-bounds', type=float, nargs=2, default=[0, 0.5],
+                   help="eccentricity bounds for eccentricity prior; only used "
+                        "with --vary-eccentricity. Default: [0, 0.5]")
+
+    # Extra waveform arguments for gwsignal approximants
+    p.add_argument('--waveform-kwargs', default=None,
+                   help='JSON string of extra waveform arguments passed to the '
+                        'gwsignal generator, written as compact JSON (no spaces) '
+                        'wrapped in single quotes, e.g. '
+                        '--waveform-kwargs \'{"lmax_nyquist":2}\'. '
+                        'Only supported for gwsignal approximants.')
 
     # Do we want to resume an old run?
     p.add_argument('--resume', action='store_true',
@@ -138,6 +159,18 @@ def create_run_sampler_arg_parser():
                          'runs. Helpful for debugging.')
 
     return p
+
+
+def parse_waveform_kwargs(json_string):
+    """
+    Parse the --waveform-kwargs JSON string into a dict.
+    """
+    if not json_string:
+        return {}
+    s = json_string.strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        s = s[1:-1]
+    return json.loads(s)
 
 
 def modify_parameters(data, args):
@@ -286,6 +319,9 @@ def initialize_kwargs(args, reference_parameters):
         'chi_lim': args.spin_magnitude_prior_bounds,
         'dist_lim': args.luminosity_distance_prior_bounds,
         'sigma_time': args.time_prior_sigma,
+        'vary_eccentricity': args.vary_eccentricity,
+        'ecc_lim': args.eccentricity_prior_bounds,
+        'waveform_kwargs': parse_waveform_kwargs(args.waveform_kwargs),
         'approx': args.approx,
         'f_ref': args.fref,
         'f_low': args.flow,
