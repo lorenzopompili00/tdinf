@@ -645,7 +645,7 @@ class WaveformManager(LogisticParameterManager):
             'eccentricity': float(x_phys.get('eccentricity', 0.)) * u.dimensionless_unscaled,
             'longAscNodes': 0. * u.rad,
             'meanPerAno': float(x_phys.get('mean_per_ano', 0.)) * u.rad,
-            'condition': 1,
+            'condition': 0,
         })
         params.update(self.waveform_kwargs)
 
