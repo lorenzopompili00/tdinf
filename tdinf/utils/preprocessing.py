@@ -52,23 +52,22 @@ def condition(raw_time_dict, raw_data_dict, t_dict, desired_sample_rate, f_min=1
     time_dict = {}
     i_dict = {}
 
-    # Get sampling rate
-    ifo = list(raw_time_dict.keys())[0]
-    raw_data_sample_rate = 1 / (raw_time_dict[ifo][1] - raw_time_dict[ifo][0])
-
-    # Get downsample factor
-    _downsample_factor = raw_data_sample_rate / desired_sample_rate
-    assert _downsample_factor.is_integer(), f'Downsample factor must be a interger, but is instead {_downsample_factor}'
-    downsample_factor = int(np.floor(_downsample_factor))
-    if verbose:
-        print('downsample factor is', downsample_factor)
-    if downsample_factor == 0:
-        raise ValueError(f"Desired sampling rate must be less than or equal to given sample rate! "
-                         f"raw:{raw_data_sample_rate}, desired:{desired_sample_rate}")
-    
     # Cycle through interferometers
     for ifo in ifos:
-        
+
+        # Get sampling rate (per ifo, since the raw sample rates can differ)
+        raw_data_sample_rate = 1 / (raw_time_dict[ifo][1] - raw_time_dict[ifo][0])
+
+        # Get downsample factor
+        _downsample_factor = raw_data_sample_rate / desired_sample_rate
+        assert _downsample_factor.is_integer(), f'Downsample factor must be a interger, but is instead {_downsample_factor}'
+        downsample_factor = int(np.floor(_downsample_factor))
+        if verbose:
+            print(f'downsample factor for {ifo} is', downsample_factor)
+        if downsample_factor == 0:
+            raise ValueError(f"Desired sampling rate must be less than or equal to given sample rate! "
+                             f"raw:{raw_data_sample_rate}, desired:{desired_sample_rate}")
+
         # Find the nearest sample in H to the designated time t
         i = np.argmin(np.abs(raw_time_dict[ifo] - t_dict[ifo]))
         ir = i % downsample_factor
