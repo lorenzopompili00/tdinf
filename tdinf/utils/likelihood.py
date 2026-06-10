@@ -607,10 +607,10 @@ class WaveformManager(LogisticParameterManager):
             'deltaT': delta_t * u.s,
             'f22_start': f22_start * u.Hz,
             'f22_ref': f_ref * u.Hz,
-            'eccentricity': float(x_phys.get('eccentricity', 0.)) * u.dimensionless_unscaled,
+            'eccentricity': 0. * u.dimensionless_unscaled,
             'longAscNodes': 0. * u.rad,
-            'meanPerAno': float(x_phys.get('mean_per_ano', 0.)) * u.rad,
-            'condition': 1,
+            'meanPerAno': 0. * u.rad,
+            'condition': 0,
         })
         params.update(self.waveform_kwargs)
 
