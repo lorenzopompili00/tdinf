@@ -18,6 +18,8 @@ data/output/plot_results/
 !data/output/plot_results/101123_view_results_full_runs.ipynb
 condor/config_file/test
 
+examples/GW190521/output_v6ehm
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

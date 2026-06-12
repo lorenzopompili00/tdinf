@@ -24,6 +24,12 @@ def create_run_sampler_arg_parser():
     # Whether to run pre-Tcut, post-Tcut, or full (Tstart to Tend)?
     p.add_argument('-m', '--mode', required=True, 
                    help='Options: "pre", "post", or "full"')
+    p.add_argument('--mode-per-ifo', nargs='+', default=None,
+                   help='Optionally override --mode for individual detectors, '
+                        'formatted as --mode-per-ifo {ifo}:{mode}, e.g. '
+                        '--mode-per-ifo L1:pre to truncate L1 at the cutoff '
+                        'while the other detectors use the global --mode. '
+                        'Detectors not listed use --mode.')
 
     # Args for cutoff (defined in # of cycles OR seconds from merger; up to user)
     p.add_argument('-t', '--Tcut-cycles', type=float, default=None, 
@@ -418,40 +424,51 @@ def get_conditioned_time_and_data(args, wf_manager, reference_parameters, initia
     # Time spacing of data
     dt = time_dict[ifos[0]][1] - time_dict[ifos[0]][0]
 
+    # Resolve the run mode for each ifo; --mode-per-ifo optionally overrides
+    # the global mode per detector (e.g. analyze the full segment in H1/V1
+    # while truncating L1 before the cutoff)
+    mode_per_ifo = {ifo: run_mode for ifo in ifos}
+    for entry in (getattr(args, 'mode_per_ifo', None) or []):
+        ifo, _, ifo_mode = entry.partition(':')
+        assert ifo in ifos, f"--mode-per-ifo given for {ifo}, which is not in --ifos {ifos}"
+        assert ifo_mode in ['full', 'pre', 'post'], \
+            f"mode must be 'full', 'pre', or 'post'. given --mode-per-ifo {entry}."
+        mode_per_ifo[ifo] = ifo_mode
+
     # Decide how much data to analyze based of off run mode
-    if run_mode == 'full':
-        TPre = tcut_geocent - args.Tstart
-        TPost = args.Tend - tcut_geocent
-    elif run_mode == 'pre':
-        TPre = tcut_geocent - args.Tstart
-        TPost = 0
-    elif run_mode == 'post':
-        TPre = 0
-        TPost = args.Tend - tcut_geocent
-    else:
-        raise NotImplementedError(f'Run mode {run_mode} is not defined, please use one of pre post or full')
+    def get_TPre_TPost(mode):
+        if mode == 'full':
+            return tcut_geocent - args.Tstart, args.Tend - tcut_geocent
+        elif mode == 'pre':
+            return tcut_geocent - args.Tstart, 0
+        elif mode == 'post':
+            return 0, args.Tend - tcut_geocent
+        else:
+            raise NotImplementedError(f'Run mode {mode} is not defined, please use one of pre post or full')
 
-    if TPre < 0:
-        print(f"Warning! Seconds analyzed before cut is less than 0!: {TPre} from {args.Tstart} to {tcut_geocent}")
-    if TPost < 0:
-        print(f"Warning! Seconds analyzed after cut is less than 0!: {TPost} from {tcut_geocent} to {args.Tend}")
-
-    # Duration --> number of time samples to look at
-    # Note Npre cannot be greater than idx or else our times index from [-1: idx],
-    # (so itll be empty), to avoid this off by 1 error we use np.floor
-    Npre = int(np.floor(TPre / dt))
-    Npost = int(
-        round(TPost / dt)) + 1  # must add one so that the target time is actually included, even if Tpost = 0,
-    # otherwise WF placement gets messed up
-    Nanalyze = Npre + Npost
-    Tanalyze = Nanalyze * dt
-    if verbose:
-        print('\nWill analyze {:.3f} s of data at {:.1f} Hz\n'.format(Tanalyze, 1 / dt))
-    assert Tanalyze > 0, "Geocenter cut time must be between Tstart and Tend. Please Modify your run settings." \
-                         f" Start to end: {args.Tstart}, {args.Tend} with cut at {tcut_geocent}"
-
-    # Crop analysis data to specified duration.
+    # Crop analysis data to specified duration (per ifo).
     for ifo, idx in icut_dict.items():
+        TPre, TPost = get_TPre_TPost(mode_per_ifo[ifo])
+
+        if TPre < 0:
+            print(f"Warning! Seconds analyzed before cut is less than 0!: {TPre} from {args.Tstart} to {tcut_geocent}")
+        if TPost < 0:
+            print(f"Warning! Seconds analyzed after cut is less than 0!: {TPost} from {tcut_geocent} to {args.Tend}")
+
+        # Duration --> number of time samples to look at
+        # Note Npre cannot be greater than idx or else our times index from [-1: idx],
+        # (so itll be empty), to avoid this off by 1 error we use np.floor
+        Npre = int(np.floor(TPre / dt))
+        Npost = int(
+            round(TPost / dt)) + 1  # must add one so that the target time is actually included, even if Tpost = 0,
+        # otherwise WF placement gets messed up
+        Nanalyze = Npre + Npost
+        Tanalyze = Nanalyze * dt
+        if verbose:
+            print('\nWill analyze {:.3f} s of {:s} data at {:.1f} Hz\n'.format(Tanalyze, ifo, 1 / dt))
+        assert Tanalyze > 0, "Geocenter cut time must be between Tstart and Tend. Please Modify your run settings." \
+                             f" Start to end: {args.Tstart}, {args.Tend} with cut at {tcut_geocent}"
+
         if Npre > idx:
             print("ERROR! You cannot have more points pre-cutoff time than there are points "
                     "between the start and the cutoff time")
